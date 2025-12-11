@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const admin = require("firebase-admin");
 const port = process.env.PORT || 5000;
 // const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
@@ -60,7 +60,7 @@ async function run() {
     const usersCollection = db.collection("users");
     const lessonCollection = db.collection("lessonCollection");
 
-    //____________________________________________________________LESSON RELATED APIS HERE___________________________________________________________//
+    //____________________________________________________________LESSONS RELATED APIS HERE___________________________________________________________//
 
     //........................Save a lesson data in db.................................//
     app.post("/lessons", async (req, res) => {
@@ -83,9 +83,10 @@ async function run() {
       }
     });
 
-    //........................Get All lesson data from db.................................//
+    //........................Get All lesson data from db...............................//
     app.get("/lessons", async (req, res) => {
       try {
+        const query = { privacy: "public" };
         const lessons = await lessonCollection.find().toArray();
         res.status(200).json({
           success: true,
@@ -102,6 +103,82 @@ async function run() {
       }
     });
 
+    //........................Get lessons by email from db..............................//
+    app.get("/lessons/user/:email", async (req, res) => {
+      const { email } = req.params;
+      try {
+        const query = { "creator.email": email };
+        const lessons = await lessonCollection.find(query).toArray();
+        res.status(200).json({
+          success: true,
+          message: "Lesson data retrieved successfully",
+          lessons,
+        });
+      } catch (error) {
+        console.error("Error retrieving lesson data:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to retrieve lesson data",
+          error: error.message,
+        });
+      }
+    });
+
+    //...................... Get a lesson by ID from db..................................//
+    app.get("/lessons/:id", async (req, res) => {
+      const { id } = req.params;
+      try {
+        const query = { _id: new ObjectId(id) };
+        const lesson = await lessonCollection.findOne(query);
+        if (!lesson) {
+          return res.status(404).json({
+            status: false,
+            message: "Lesson Not Found",
+          });
+        }
+        res.status(200).json({
+          status: true,
+          message: "Lesson fetched successfully",
+          lesson,
+        });
+      } catch (error) {
+        console.log("Failed to fetch single lesson");
+        res.status(200).json({
+          status: false,
+          message: "Failed to fetch single lesson!",
+        });
+      }
+    });
+
+    //...................... DELETE a lesson by ID from db...............................//
+    app.delete("/lessons/:id", async (req, res) => {
+      const { id } = req.params;
+      try {
+        const query = { _id: new ObjectId(id) };
+        const result = await lessonCollection.deleteOne(query);
+
+        if (result.deletedCount === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Lesson not found",
+          });
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: "Lesson deleted successfully",
+        });
+      } catch (error) {
+        console.error("Delete error:", error);
+
+        return res.status(500).json({
+          success: false,
+          message: "Internal server error while deleting lesson",
+          error: error.message,
+        });
+      }
+    });
+
     //______________________________________________________________USERS T RELATED APIS HER_____________________________________________________________//
 
     //........................Save a lesson data in db.................................//
@@ -111,6 +188,7 @@ async function run() {
         userData.created_at = new Date().toISOString();
         userData.last_loggedIn = new Date().toISOString();
         userData.role = "user";
+        userData.isPremium = false;
 
         const query = {
           email: userData.email,
@@ -140,6 +218,27 @@ async function run() {
         res.status(500).json({
           success: false,
           message: "Failed to insert user data",
+          error: error.message,
+        });
+      }
+    });
+
+    //........................get user by email from db.................................//
+    app.get("/user/:email", async (req, res) => {
+      const { email } = req.params;
+      try {
+        const query = { email: email };
+        const user = await usersCollection.findOne(query);
+        res.status(200).json({
+          success: true,
+          message: "User data retrieved successfully",
+          user,
+        });
+      } catch (error) {
+        console.error("Error retrieving user data:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to retrieve user data",
           error: error.message,
         });
       }
