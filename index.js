@@ -103,7 +103,7 @@ async function run() {
       }
     });
 
-    //........................Get lessons by email from db..............................//
+    //........................Get all lessons by email from db...........................//
     app.get("/lessons/user/:email", async (req, res) => {
       const { email } = req.params;
       try {
@@ -119,6 +119,38 @@ async function run() {
         res.status(500).json({
           success: false,
           message: "Failed to retrieve lesson data",
+          error: error.message,
+        });
+      }
+    });
+
+    //........................Get all public lessons by email from db....................//
+    app.get("/lessons/public/:email", async (req, res) => {
+      const { email } = req.params;
+      try {
+        const query = { "creator.email": email };
+        const projection = { title: 1, description: 1, category: 1 };
+        const lessons = await lessonCollection.find(query).project(projection).sort({createdAt : -1}).toArray();
+
+        // Public lession not found
+        if (!lessons.length) {
+          return res.status(404).json({
+            success: false,
+            message: "No public lessons found for this user",
+            lessons: [],
+          });
+        }
+        // success response
+        res.status(200).json({
+          success: true,
+          message: "Public lessons retrieved successfully",
+          lessons,
+        });
+      } catch (error) {
+        console.error("Error retrieving lesson data:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to retrieve public lesson data",
           error: error.message,
         });
       }
@@ -146,6 +178,27 @@ async function run() {
         res.status(200).json({
           status: false,
           message: "Failed to fetch single lesson!",
+        });
+      }
+    });
+
+    //......................Counts user lesson by email from db............................//
+    app.get("/lessons/count/:email", async (req, res) => {
+      const { email } = req.params;
+      try {
+        const count = await lessonCollection.countDocuments({
+          "creator.email": email,
+        });
+        res.status(200).json({
+          success: true,
+          count,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch lessons count",
+          error: error.message,
         });
       }
     });
@@ -212,7 +265,6 @@ async function run() {
       }
     });
 
-    
     //______________________________________________________________USERS T RELATED APIS HER_____________________________________________________________//
 
     //........................Save a lesson data in db.................................//
