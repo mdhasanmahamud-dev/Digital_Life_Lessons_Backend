@@ -179,6 +179,40 @@ async function run() {
       }
     });
 
+    //...................... Update a lesson by ID from db...............................//
+    app.patch("/lessons/:id", async (req, res) => {
+      const { id } = req.params;
+      const updatedData = req.body;
+      try {
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: updatedData,
+        };
+
+        const result = await lessonCollection.updateOne(query, updateDoc);
+
+        if (result.modifiedCount === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "No changes found or lesson not found!",
+          });
+        }
+
+        res.status(200).json({
+          success: true,
+          message: "Lesson updated successfully",
+        });
+      } catch (error) {
+        console.error("Failed to update lesson:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to update lesson",
+          error: error.message,
+        });
+      }
+    });
+
+    
     //______________________________________________________________USERS T RELATED APIS HER_____________________________________________________________//
 
     //........................Save a lesson data in db.................................//
