@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KYE);
 const admin = require("firebase-admin");
 const port = process.env.PORT || 5000;
 // const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
@@ -17,11 +18,7 @@ const app = express();
 // middleware
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "https://b12-m11-session.web.app",
-    ],
+    origin: [process.env.CLIENT_DOMAIN],
     credentials: true,
     optionSuccessStatus: 200,
   })
@@ -59,6 +56,7 @@ async function run() {
     //Create Collections
     const usersCollection = db.collection("users");
     const lessonCollection = db.collection("lessonCollection");
+    const favoriteCollection = db.collection("favoriteCollection");
 
     //____________________________________________________________LESSONS RELATED APIS HERE___________________________________________________________//
 
@@ -130,7 +128,11 @@ async function run() {
       try {
         const query = { "creator.email": email };
         const projection = { title: 1, description: 1, category: 1 };
-        const lessons = await lessonCollection.find(query).project(projection).sort({createdAt : -1}).toArray();
+        const lessons = await lessonCollection
+          .find(query)
+          .project(projection)
+          .sort({ createdAt: -1 })
+          .toArray();
 
         // Public lession not found
         if (!lessons.length) {
@@ -265,7 +267,7 @@ async function run() {
       }
     });
 
-    //______________________________________________________________USERS T RELATED APIS HER_____________________________________________________________//
+    //______________________________________________________________USERS T RELATED APIS HERE_____________________________________________________________//
 
     //........................Save a lesson data in db.................................//
     app.post("/user", async (req, res) => {
@@ -309,7 +311,7 @@ async function run() {
       }
     });
 
-    //........................get user by email from db.................................//
+    //........................get user by email from db................................//
     app.get("/user/:email", async (req, res) => {
       const { email } = req.params;
       try {
@@ -330,7 +332,71 @@ async function run() {
       }
     });
 
-    //______________________________________________________________PAYMENT RELATED APIS HER_____________________________________________________________//
+    //______________________________________________________________PAYMENT RELATED APIS HERE_____________________________________________________________//
+    //........................Create Stripe Checkout Session.................................//
+    app.post("/create-checkout-session", async (req, res) => {
+      const { email, name, photo, uid, price } = req.body;
+      console.log(price);
+      try {
+        const session = await stripe.checkout.sessions.create({
+          mode: "payment",
+          customer_email: email,
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: "Premium Membership",
+                },
+                unit_amount: price * 100,
+              },
+              quantity: 1,
+            },
+          ],
+          metadata: {
+            name: name,
+            photo: photo,
+            uid: uid,
+          },
+          success_url: `${process.env.CLIENT_DOMAIN}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${process.env.CLIENT_DOMAIN}/upgrade`,
+        });
+
+        res.status(200).json({
+          success: true,
+          message: "Checkout session created successfully.",
+          url: session.url,
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: "Failed to create checkout session. Please try again later.",
+          error: error.message,
+        });
+      }
+    });
+
+    //..................Verify and update user status by email in db...................//
+    app.get("/verify-payment/:sessionId", async (req, res) => {
+      const { sessionId } = req.params;
+      try {
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        console.log(session);
+        if (session.payment_status === "paid") {
+          // update user isPremium true
+          await usersCollection.updateOne(
+            { email: session.customer_email },
+            { $set: { isPremium: true } }
+          );
+          res.send({ success: true });
+        } else {
+          res.send({ success: false });
+        }
+      } catch (err) {
+        console.log(err);
+        res.status(500).send({ success: false, error: err.message });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
