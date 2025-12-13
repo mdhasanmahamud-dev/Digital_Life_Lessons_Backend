@@ -64,8 +64,12 @@ async function run() {
     app.post("/lessons", async (req, res) => {
       const lessonData = req.body;
       try {
-        console.log(lessonData); // Correct variable name
-        const result = await lessonCollection.insertOne(lessonData);
+        const lesson = {
+          ...lessonData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        const result = await lessonCollection.insertOne(lesson);
         res.status(200).json({
           success: true,
           message: "Lesson data inserted successfully",
@@ -205,7 +209,52 @@ async function run() {
       }
     });
 
-    //...................... DELETE a lesson by ID from db...............................//
+    //................Get recommended lesson by category and tone from db..................//
+    app.get("/lessons/recommended/:id", async (req, res) => {
+      const { id } = req.params;
+      try {
+        //.......................Current lesson fetch.......................//
+        const currentLesson = await lessonCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!currentLesson) {
+          return res
+            .status(404)
+            .json({ success: false, message: "Lesson not found" });
+        }
+
+        //....................... Filter for recommended lessons.......................//
+        const query = {
+          _id: { $ne: currentLesson._id },
+          $or: [
+            { category: currentLesson.category },
+            { emotionalTone: currentLesson.emotionalTone },
+          ],
+          privacy: "public",
+        };
+
+        const recommendedLessons = await lessonCollection
+          .find(query)
+          .limit(6)
+          .toArray();
+
+        res.status(200).json({
+          success: true,
+          message: "RecommendedLessons Fetch Successfull",
+          lessons: recommendedLessons,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch recommended lessons",
+          error: error.message,
+        });
+      }
+    });
+
+    //...................... DELETE a lesson by ID from db.................................//
     app.delete("/lessons/:id", async (req, res) => {
       const { id } = req.params;
       try {
@@ -234,7 +283,7 @@ async function run() {
       }
     });
 
-    //...................... Update a lesson by ID from db...............................//
+    //...................... Update a lesson by ID in db..................................//
     app.patch("/lessons/:id", async (req, res) => {
       const { id } = req.params;
       const updatedData = req.body;
