@@ -58,7 +58,7 @@ async function run() {
     const lessonCollection = db.collection("lessonCollection");
     const favoriteCollection = db.collection("favoriteCollection");
 
-    //____________________________________________________________LESSONS RELATED APIS HERE___________________________________________________________//
+    //_________________________________________________LESSONS RELATED APIS HERE___________________________________________________________//
 
     //........................Save a lesson data in db.................................//
     app.post("/lessons", async (req, res) => {
@@ -316,9 +316,51 @@ async function run() {
       }
     });
 
-    //______________________________________________________________USERS T RELATED APIS HERE_____________________________________________________________//
+    //_________________________________________________FAVORITES RELATED APIS HERE___________________________________________________________//
 
-    //........................Save a lesson data in db.................................//
+    //...................... Add Lesson to Favorites......................................//
+    app.post("/favorites", async (req, res) => {
+      const { lessonId, userEmail } = req.body;
+      try {
+        const exists = await favoriteCollection.findOne({
+          userEmail,
+          lessonId: new ObjectId(lessonId),
+        });
+
+        if (exists) {
+          return res.status(400).json({
+            success: false,
+            message: "Lesson already in favorites",
+          });
+        }
+
+        const favorite = {
+          userEmail,
+          lessonId: new ObjectId(lessonId),
+          savedAt: new Date(),
+        };
+
+        const result = await favoriteCollection.insertOne(favorite);
+        res
+          .status(200)
+          .json({
+            success: true,
+            message: "Lesson added to favorites",
+            result,
+          });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to add favorite",
+          error: error.message,
+        });
+      }
+    });
+
+    //___________________________________________________USERS RELATED APIS HERE_____________________________________________________________//
+
+    //........................Save a lesson data in db....................................//
     app.post("/user", async (req, res) => {
       const userData = req.body;
       try {
@@ -360,7 +402,7 @@ async function run() {
       }
     });
 
-    //........................get user by email from db................................//
+    //........................get user by email from db...................................//
     app.get("/user/:email", async (req, res) => {
       const { email } = req.params;
       try {
@@ -381,8 +423,8 @@ async function run() {
       }
     });
 
-    //______________________________________________________________PAYMENT RELATED APIS HERE_____________________________________________________________//
-    //........................Create Stripe Checkout Session.................................//
+    //___________________________________________________PAYMENT RELATED APIS HERE_____________________________________________________________//
+    //........................Create Stripe Checkout Session..........................//
     app.post("/create-checkout-session", async (req, res) => {
       const { email, name, photo, uid, price } = req.body;
       console.log(price);
