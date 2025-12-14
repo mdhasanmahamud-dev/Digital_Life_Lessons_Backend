@@ -89,7 +89,7 @@ async function run() {
     app.get("/lessons", async (req, res) => {
       try {
         const query = { privacy: "public" };
-        const lessons = await lessonCollection.find().toArray();
+        const lessons = await lessonCollection.find(query).toArray();
         res.status(200).json({
           success: true,
           message: "Lessons data retrieved successfully",
