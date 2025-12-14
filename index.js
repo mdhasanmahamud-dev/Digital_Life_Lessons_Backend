@@ -110,7 +110,10 @@ async function run() {
       const { email } = req.params;
       try {
         const query = { "creator.email": email };
-        const lessons = await lessonCollection.find(query).toArray();
+        const lessons = await lessonCollection
+          .find(query)
+          .sort({ createdAt: -1 })
+          .toArray();
         res.status(200).json({
           success: true,
           message: "Lesson data retrieved successfully",
@@ -209,6 +212,26 @@ async function run() {
       }
     });
 
+    //......................Counts user favorites by email from db.........................//
+    app.get("/favorites/count/:email", async (req, res) => {
+      const { email } = req.params;
+      try {
+        const count = await favoriteCollection.countDocuments({
+          userEmail: email,
+        });
+        res.status(200).json({
+          success: true,
+          count,
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch favorites count",
+          error: error.message,
+        });
+      }
+    });
+    
     //................Get recommended lesson by category and tone from db..................//
     app.get("/lessons/recommended/:id", async (req, res) => {
       const { id } = req.params;
