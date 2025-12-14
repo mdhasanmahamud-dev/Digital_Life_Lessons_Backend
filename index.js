@@ -341,19 +341,62 @@ async function run() {
         };
 
         const result = await favoriteCollection.insertOne(favorite);
-        res
-          .status(200)
-          .json({
-            success: true,
-            message: "Lesson added to favorites",
-            result,
-          });
+        res.status(200).json({
+          success: true,
+          message: "Lesson added to favorites",
+          result,
+        });
       } catch (error) {
         console.error(error);
         res.status(500).json({
           success: false,
           message: "Failed to add favorite",
           error: error.message,
+        });
+      }
+    });
+
+    //...................... Get favorites by user email......................................//
+    app.get("/favorites", async (req, res) => {
+      const { email } = req.query;
+
+      try {
+        const favorites = await favoriteCollection
+          .aggregate([
+            {
+              $match: { userEmail: email },
+            },
+            {
+              $lookup: {
+                from: "lessonCollection",
+                localField: "lessonId",
+                foreignField: "_id",
+                as: "lesson",
+              },
+            },
+            {
+              $unwind: "$lesson",
+            },
+            {
+              $project: {
+                userEmail: 1,
+                savedAt: 1,
+                "lesson._id": 1,
+                "lesson.title": 1,
+                "lesson.category": 1,
+              },
+            },
+          ])
+          .toArray();
+
+        res.status(200).json({
+          success: true,
+          favorites,
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch favorites",
         });
       }
     });
