@@ -231,7 +231,7 @@ async function run() {
         });
       }
     });
-    
+
     //................Get recommended lesson by category and tone from db..................//
     app.get("/lessons/recommended/:id", async (req, res) => {
       const { id } = req.params;
@@ -272,6 +272,29 @@ async function run() {
         res.status(500).json({
           success: false,
           message: "Failed to fetch recommended lessons",
+          error: error.message,
+        });
+      }
+    });
+
+    //......................Get recent lesson by email from db.............................//
+    app.get("/lessons/recent/:email", async (req, res) => {
+      const { email } = req.params;
+      try {
+        const recentLessons = await lessonCollection
+          .find({ "creator.email": email })
+          .sort({ createdAt: -1 })
+          .limit(4)
+          .toArray();
+
+        res.status(200).json({
+          success: true,
+          recentLessons,
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch recent lessons",
           error: error.message,
         });
       }
