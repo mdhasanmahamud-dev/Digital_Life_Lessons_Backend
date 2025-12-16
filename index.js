@@ -66,6 +66,7 @@ async function run() {
       try {
         const lesson = {
           ...lessonData,
+          isFeatured: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
