@@ -166,6 +166,25 @@ async function run() {
       }
     });
 
+    //.........................Get featured lesson from db................................//
+    app.get("/lessons/featured", async (req, res) => {
+      try {
+        const query = { isFeatured: true };
+        const featured = await lessonCollection.find(query).toArray();
+
+        res.status(200).json({
+          status: true,
+          data: featured,
+        });
+      } catch (error) {
+        res.status(500).json({
+          status: false,
+          message: "Failed to fetch featured lessons",
+          error: error.message,
+        });
+      }
+    });
+    
     //...................... Get a lesson by ID from db..................................//
     app.get("/lessons/:id", async (req, res) => {
       const { id } = req.params;
@@ -184,7 +203,7 @@ async function run() {
           lesson,
         });
       } catch (error) {
-        console.log("Failed to fetch single lesson");
+        console.log("Failed to fetch single lesson..");
         res.status(200).json({
           status: false,
           message: "Failed to fetch single lesson!",
