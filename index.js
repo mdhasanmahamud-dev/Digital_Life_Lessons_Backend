@@ -66,7 +66,7 @@ async function run() {
       try {
         const lesson = {
           ...lessonData,
-          isFeatured: true,
+          isFeatured: false,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -184,7 +184,7 @@ async function run() {
         });
       }
     });
-    
+
     //...................... Get a lesson by ID from db..................................//
     app.get("/lessons/:id", async (req, res) => {
       const { id } = req.params;
@@ -379,6 +379,60 @@ async function run() {
           message: "Failed to update lesson",
           error: error.message,
         });
+      }
+    });
+
+    //...................... Update a lesson visibility by ID in db.......................//
+    app.put("/lessons/visibility/:id", async (req, res) => {
+      const { id } = req.params;
+      const { privacy } = req.body;
+      try {
+        const query = { _id: new ObjectId(id) };
+        const updatedDoc = { $set: { privacy: privacy } };
+        const result = await lessonCollection.updateOne(query, updatedDoc);
+
+        if (result.modifiedCount > 0) {
+          return res.send({
+            success: true,
+            message: "Visibility updated successfully",
+          });
+        } else {
+          return res.send({
+            success: false,
+            message: "Failed to update visibility",
+          });
+        }
+      } catch (error) {
+        return res
+          .status(500)
+          .send({ success: false, message: "Server Error" });
+      }
+    });
+
+    //...................... Update a lesson access lavel by ID in db.......................//
+    app.put("/lessons/access/:id", async (req, res) => {
+      const { id } = req.params;
+      const { accessLevel } = req.body;
+      try {
+        const query = { _id: new ObjectId(id) };
+        const updatedDoc = { $set: { accessLevel: accessLevel } };
+        const result = await lessonCollection.updateOne(query, updatedDoc);
+
+        if (result.modifiedCount > 0) {
+          return res.send({
+            success: true,
+            message: "AccessLevel updated successfully",
+          });
+        } else {
+          return res.send({
+            success: false,
+            message: "Failed to update accessLevel",
+          });
+        }
+      } catch (error) {
+        return res
+          .status(500)
+          .send({ success: false, message: "Server Error" });
       }
     });
 
