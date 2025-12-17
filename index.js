@@ -130,6 +130,52 @@ async function run() {
       }
     });
 
+    //......................Counts all public lesson  from db............................//
+    app.get("/lessons/public/total-count", async (req, res) => {
+      try {
+        const count = await lessonCollection.countDocuments();
+        res.status(200).json({
+          success: true,
+          message: "All public lessons count successfull..",
+          count,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch public lessons count",
+          error: error.message,
+        });
+      }
+    });
+
+    //...................... Counts today created lessons from db .......................//
+    app.get("/lessons/analytics/today-count", async (req, res) => {
+      try {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
+        const endOfToday = new Date();
+        endOfToday.setHours(23, 59, 59, 999);
+
+        const count = await lessonCollection.countDocuments({
+          createdAt: {
+            $gte: startOfToday,
+            $lte: endOfToday,
+          },
+        });
+
+        res.status(200).json({
+          success: true,
+          count,
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+        });
+      }
+    });
+
     //........................Get all public lessons by email from db....................//
     app.get("/lessons/public/:email", async (req, res) => {
       const { email } = req.params;
@@ -320,6 +366,38 @@ async function run() {
       }
     });
 
+    //...................... Count active contributors from db ...........................//
+    app.get("/lessons/analytics/active-contributors", async (req, res) => {
+      try {
+        const contributors = await lessonCollection
+          .aggregate([
+            {
+              $group: {
+                _id: "$creator.email",
+              },
+            },
+            {
+              $count: "totalActiveContributors",
+            },
+          ])
+          .toArray();
+
+        const count =
+          contributors.length > 0 ? contributors[0].totalActiveContributors : 0;
+
+        res.status(200).json({
+          success: true,
+          count,
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch active contributors",
+          error: error.message,
+        });
+      }
+    });
+
     //...................... DELETE a lesson by ID from db.................................//
     app.delete("/lessons/:id", async (req, res) => {
       const { id } = req.params;
@@ -476,7 +554,7 @@ async function run() {
       }
     });
 
-    //...................... Get favorites by user email......................................//
+    //...................... Get favorites by user email.................................//
     app.get("/favorites", async (req, res) => {
       const { email } = req.query;
 
@@ -523,7 +601,7 @@ async function run() {
 
     //___________________________________________________USERS RELATED APIS HERE_____________________________________________________________//
 
-    //........................Save a lesson data in db....................................//
+    //........................Save a user data in db....................................//
     app.post("/user", async (req, res) => {
       const userData = req.body;
       try {
@@ -565,6 +643,43 @@ async function run() {
       }
     });
 
+    //........................Get all users data from in db.............................//
+    app.get("/user", async (req, res) => {
+      try {
+        const users = await usersCollection.find().toArray();
+        res.status(200).json({
+          success: true,
+          message: "All users fetched successfully",
+          users: users,
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch users",
+          error: error.message,
+        });
+      }
+    });
+
+    //......................Counts user lesson by email from db............................//
+    app.get("/user/count", async (req, res) => {
+      try {
+        const count = await usersCollection.countDocuments();
+        res.status(200).json({
+          success: true,
+          message: "All users count successfull..",
+          count,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch users count",
+          error: error.message,
+        });
+      }
+    });
+
     //........................get user by email from db...................................//
     app.get("/user/:email", async (req, res) => {
       const { email } = req.params;
@@ -581,6 +696,68 @@ async function run() {
         res.status(500).json({
           success: false,
           message: "Failed to retrieve user data",
+          error: error.message,
+        });
+      }
+    });
+
+    //........................get user role by email from db..............................//
+    app.get("/user/role/:email", async (req, res) => {
+      const { email } = req.params;
+      try {
+        const query = { email: email };
+        const user = await usersCollection.findOne(query, {
+          projection: { role: 1, _id: 0 },
+        });
+
+        if (!user) {
+          return res.status(404).json({
+            success: false,
+            message: "User not found",
+          });
+        }
+
+        res.status(200).json({
+          success: true,
+          message: "User role retrieved successfully",
+          role: user.role,
+        });
+      } catch (error) {
+        console.error("Error retrieving user role:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to retrieve user role",
+          error: error.message,
+        });
+      }
+    });
+
+    //.........................Update user role in db.....................................//
+    app.patch("/user/role/:id", async (req, res) => {
+      const { id } = req.params; 
+      const { role } = req.body;
+
+      try {
+        const result = await usersCollection.updateOne(
+          { _id: new ObjectId(id) }, 
+          { $set: { role: role } } 
+        );
+
+        if (result.modifiedCount === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "User not found or role already set",
+          });
+        }
+
+        res.status(200).json({
+          success: true,
+          message: "User role updated successfully",
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: "Failed to update role",
           error: error.message,
         });
       }
