@@ -87,6 +87,25 @@ async function run() {
     });
 
     //........................Get All lesson data from db...............................//
+    app.get("/all-lessons", async (req, res) => {
+      try {
+        const lessons = await lessonCollection.find().toArray();
+        res.status(200).json({
+          success: true,
+          message: "Lessons data retrieved successfully",
+          lessons,
+        });
+      } catch (error) {
+        console.error("Error retrieving lessons data:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to retrieve lessons data",
+          error: error.message,
+        });
+      }
+    });
+
+    //........................Get All public lesson data from db...............................//
     app.get("/lessons", async (req, res) => {
       try {
         const query = { privacy: "public" };
@@ -133,7 +152,8 @@ async function run() {
     //......................Counts all public lesson  from db............................//
     app.get("/lessons/public/total-count", async (req, res) => {
       try {
-        const count = await lessonCollection.countDocuments();
+        const query = { privacy: "public" };
+        const count = await lessonCollection.countDocuments(query);
         res.status(200).json({
           success: true,
           message: "All public lessons count successfull..",
@@ -149,6 +169,26 @@ async function run() {
       }
     });
 
+    //......................Counts all private lesson  from db............................//
+    app.get("/lessons/private/total-count", async (req, res) => {
+      try {
+        const query = { privacy: "private" };
+        const count = await lessonCollection.countDocuments(query);
+        res.status(200).json({
+          success: true,
+          message: "All public lessons count successfull..",
+          count,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch public lessons count",
+          error: error.message,
+        });
+      }
+    });
+    
     //...................... Counts today created lessons from db .......................//
     app.get("/lessons/analytics/today-count", async (req, res) => {
       try {
@@ -734,13 +774,13 @@ async function run() {
 
     //.........................Update user role in db.....................................//
     app.patch("/user/role/:id", async (req, res) => {
-      const { id } = req.params; 
+      const { id } = req.params;
       const { role } = req.body;
 
       try {
         const result = await usersCollection.updateOne(
-          { _id: new ObjectId(id) }, 
-          { $set: { role: role } } 
+          { _id: new ObjectId(id) },
+          { $set: { role: role } }
         );
 
         if (result.modifiedCount === 0) {
