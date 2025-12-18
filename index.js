@@ -57,6 +57,7 @@ async function run() {
     const usersCollection = db.collection("users");
     const lessonCollection = db.collection("lessonCollection");
     const favoriteCollection = db.collection("favoriteCollection");
+    const lessonsReportsCollection = db.collection("reportsCollection");
 
     //_________________________________________________LESSONS RELATED APIS HERE___________________________________________________________//
 
@@ -696,8 +697,109 @@ async function run() {
       }
     });
 
-    //___________________________________________________USERS RELATED APIS HERE_____________________________________________________________//
+    //_________________________________________________REPORTS RELATED APIS HERE___________________________________________________________//
 
+    //....................................Save a report in db.............................//
+    app.post("/reportes", async (req, res) => {
+      try {
+        const reportData = req.body;
+        const {
+          lessonId,
+          reporterUserId,
+          reportedUserEmail,
+          reason,
+          description,
+        } = reportData;
+
+        if (
+          !lessonId ||
+          !reporterUserId ||
+          !reportedUserEmail ||
+          !reason ||
+          !description
+        ) {
+          return res.status(400).json({
+            success: false,
+            message: "Required fields are missing",
+          });
+        }
+
+        // Create report object
+        const newReport = {
+          lessonId,
+          reporterUserId,
+          reportedUserEmail,
+          reason,
+          description,
+          timestamp: new Date(),
+        };
+
+        const result = await lessonsReportsCollection.insertOne(newReport);
+
+        res.status(201).json({
+          success: true,
+          message: "Report submitted successfully",
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        console.error("Report submit error:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to submit report",
+        });
+      }
+    });
+
+    //.................................Get all reports from db...........................//
+    app.get("/reportes", async (req, res) => {
+      try {
+        const reportsCount = await lessonsReportsCollection
+          .aggregate([
+            {
+              $addFields: {
+                lessonIdObj: { $toObjectId: "$lessonId" },
+              },
+            },
+            {
+              $group: {
+                _id: "$lessonIdObj",
+                count: { $sum: 1 },
+              },
+            },
+            {
+              $lookup: {
+                from: "lessonCollection",
+                localField: "_id",
+                foreignField: "_id",
+                as: "lesson",
+              },
+            },
+            { $unwind: "$lesson" },
+            {
+              $project: {
+                _id: 0,
+                lessonId: "$_id",
+                lessonTitle: "$lesson.title",
+                reportCount: "$count",
+              },
+            },
+          ])
+          .toArray();
+
+        res.status(200).json({
+          success: true,
+          data: reportsCount,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch report counts",
+        });
+      }
+    });
+
+    //___________________________________________________USERS RELATED APIS HERE_____________________________________________________________//
     //........................Save a user data in db....................................//
     app.post("/user", async (req, res) => {
       const userData = req.body;
