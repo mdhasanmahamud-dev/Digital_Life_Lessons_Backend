@@ -527,7 +527,7 @@ async function run() {
       }
     });
 
-    //...................... Update a lesson access lavel by ID in db.......................//
+    //...................... Update a lesson access lavel by ID in db.....................//
     app.put("/lessons/access/:id", async (req, res) => {
       const { id } = req.params;
       const { accessLevel } = req.body;
@@ -551,6 +551,37 @@ async function run() {
         return res
           .status(500)
           .send({ success: false, message: "Server Error" });
+      }
+    });
+
+    //...................... Update a lesson featured level by ID in db....................//
+    app.put("/lessons/featured/:id", async (req, res) => {
+      const { id } = req.params;
+      const { featured } = req.body;
+
+      try {
+        const query = { _id: new ObjectId(id) };
+        const updatedDoc = { $set: { isFeatured: featured } };
+        const result = await lessonCollection.updateOne(query, updatedDoc);
+
+        if (result.modifiedCount > 0) {
+          return res.send({
+            success: true,
+            message: "Featured updated successfully",
+          });
+        } else {
+          return res.send({
+            success: false,
+            message: "Failed to update featured",
+          });
+        }
+      } catch (error) {
+        console.error("Error updating featured:", error);
+        return res.status(500).send({
+          success: false,
+          message: "Internal server error",
+          error: error.message,
+        });
       }
     });
 
