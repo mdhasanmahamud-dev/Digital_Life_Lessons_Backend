@@ -188,7 +188,7 @@ async function run() {
         });
       }
     });
-    
+
     //...................... Counts today created lessons from db .......................//
     app.get("/lessons/analytics/today-count", async (req, res) => {
       try {
@@ -635,6 +635,32 @@ async function run() {
         res.status(500).json({
           success: false,
           message: "Failed to fetch favorites",
+        });
+      }
+    });
+
+    //...................... Remove a  favorite lesson by id from db......................//
+    app.delete("/favorites/:id", async (req, res) => {
+      const { id } = req.params;
+      try {
+        const query = { _id: new ObjectId(id) };
+        const result = await favoriteCollection.deleteOne(query);
+        if (result.deletedCount === 1) {
+          res.status(200).json({
+            success: true,
+            message: "Favorite lesson removed successfully",
+          });
+        } else {
+          res.status(404).json({
+            success: false,
+            message: "Favorite lesson not found",
+          });
+        }
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: "Internal server error",
+          error: error.message,
         });
       }
     });
