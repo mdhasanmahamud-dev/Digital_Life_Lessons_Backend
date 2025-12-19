@@ -106,7 +106,7 @@ async function run() {
       }
     });
 
-    //........................Get All public lesson data from db...............................//
+    //........................Get All public lesson data from db........................//
     app.get("/lessons", async (req, res) => {
       try {
         const query = { privacy: "public" };
@@ -126,7 +126,7 @@ async function run() {
       }
     });
 
-    //........................Get all lessons by email from db...........................//
+    //........................Get all lessons by email from db..........................//
     app.get("/lessons/user/:email", async (req, res) => {
       const { email } = req.params;
       try {
@@ -150,7 +150,7 @@ async function run() {
       }
     });
 
-    //......................Counts all public lesson  from db............................//
+    //......................Counts all public lesson  from db...........................//
     app.get("/lessons/public/total-count", async (req, res) => {
       try {
         const query = { privacy: "public" };
@@ -170,7 +170,7 @@ async function run() {
       }
     });
 
-    //......................Counts all private lesson  from db............................//
+    //......................Counts all private lesson  from db...........................//
     app.get("/lessons/private/total-count", async (req, res) => {
       try {
         const query = { privacy: "private" };
@@ -799,6 +799,24 @@ async function run() {
       }
     });
 
+    //..........................Counts report lesson by .................................//
+    app.get("/reportes/count", async (req, res) => {
+      try {
+        const count = await lessonsReportsCollection.countDocuments();
+        res.status(200).json({
+          success: true,
+          count,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch report count",
+          error: error.message,
+        });
+      }
+    });
+    
     //___________________________________________________USERS RELATED APIS HERE_____________________________________________________________//
     //........................Save a user data in db....................................//
     app.post("/user", async (req, res) => {
