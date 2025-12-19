@@ -671,6 +671,35 @@ async function run() {
       }
     });
 
+    //.................... Get top active contributors with lesson count .................//
+    app.get("/lessons/analytics/top-contributors",verifyJWT, async (req, res) => {
+      try {
+        const contributors = await lessonCollection
+          .aggregate([
+            {
+              $group: {
+                _id: "$creator.email",
+                name: { $first: "$creator.name" },
+                totalLessons: { $sum: 1 },
+              },
+            },
+            { $sort: { totalLessons: -1 } },
+            { $limit: 5 }, 
+          ])
+          .toArray();
+
+        res.status(200).json({
+          success: true,
+          contributors,
+        });
+      } catch (error) {
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch active contributors",
+        });
+      }
+    });
+
     //...................... Remove a  favorite lesson by id from db......................//
     app.delete("/favorites/:id", async (req, res) => {
       const { id } = req.params;
@@ -816,7 +845,7 @@ async function run() {
         });
       }
     });
-    
+
     //___________________________________________________USERS RELATED APIS HERE_____________________________________________________________//
     //........................Save a user data in db....................................//
     app.post("/user", async (req, res) => {
