@@ -5,11 +5,9 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KYE);
 const admin = require("firebase-admin");
 const port = process.env.PORT || 5000;
-// const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
-//   "utf-8"
-// );
-// const serviceAccount = JSON.parse(decoded);
+
 const serviceAccount = require("./digital-life-lessons.json");
+
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
@@ -88,7 +86,7 @@ async function run() {
     });
 
     //........................Get All lesson data from db...............................//
-    app.get("/all-lessons", async (req, res) => {
+    app.get("/all-lessons", verifyJWT, async (req, res) => {
       try {
         const lessons = await lessonCollection.find().toArray();
         res.status(200).json({
@@ -151,7 +149,7 @@ async function run() {
     });
 
     //......................Counts all public lesson  from db...........................//
-    app.get("/lessons/public/total-count", async (req, res) => {
+    app.get("/lessons/public/total-count", verifyJWT, async (req, res) => {
       try {
         const query = { privacy: "public" };
         const count = await lessonCollection.countDocuments(query);
@@ -171,7 +169,7 @@ async function run() {
     });
 
     //......................Counts all private lesson  from db...........................//
-    app.get("/lessons/private/total-count", async (req, res) => {
+    app.get("/lessons/private/total-count", verifyJWT, async (req, res) => {
       try {
         const query = { privacy: "private" };
         const count = await lessonCollection.countDocuments(query);
@@ -191,7 +189,7 @@ async function run() {
     });
 
     //...................... Counts today created lessons from db .......................//
-    app.get("/lessons/analytics/today-count", async (req, res) => {
+    app.get("/lessons/analytics/today-count", verifyJWT, async (req, res) => {
       try {
         const startOfToday = new Date();
         startOfToday.setHours(0, 0, 0, 0);
@@ -408,36 +406,39 @@ async function run() {
     });
 
     //...................... Count active contributors from db ...........................//
-    app.get("/lessons/analytics/active-contributors", async (req, res) => {
-      try {
-        const contributors = await lessonCollection
-          .aggregate([
-            {
-              $group: {
-                _id: "$creator.email",
+    app.get("/lessons/analytics/active-contributors",verifyJWT,async (req, res) => {
+        try {
+          const contributors = await lessonCollection
+            .aggregate([
+              {
+                $group: {
+                  _id: "$creator.email",
+                },
               },
-            },
-            {
-              $count: "totalActiveContributors",
-            },
-          ])
-          .toArray();
+              {
+                $count: "totalActiveContributors",
+              },
+            ])
+            .toArray();
 
-        const count =
-          contributors.length > 0 ? contributors[0].totalActiveContributors : 0;
+          const count =
+            contributors.length > 0
+              ? contributors[0].totalActiveContributors
+              : 0;
 
-        res.status(200).json({
-          success: true,
-          count,
-        });
-      } catch (error) {
-        res.status(500).json({
-          success: false,
-          message: "Failed to fetch active contributors",
-          error: error.message,
-        });
+          res.status(200).json({
+            success: true,
+            count,
+          });
+        } catch (error) {
+          res.status(500).json({
+            success: false,
+            message: "Failed to fetch active contributors",
+            error: error.message,
+          });
+        }
       }
-    });
+    );
 
     //...................... DELETE a lesson by ID from db.................................//
     app.delete("/lessons/:id", async (req, res) => {
@@ -502,7 +503,7 @@ async function run() {
     });
 
     //...................... Update a lesson visibility by ID in db.......................//
-    app.put("/lessons/visibility/:id", async (req, res) => {
+    app.put("/lessons/visibility/:id", verifyJWT, async (req, res) => {
       const { id } = req.params;
       const { privacy } = req.body;
       try {
@@ -529,7 +530,7 @@ async function run() {
     });
 
     //...................... Update a lesson access lavel by ID in db.....................//
-    app.put("/lessons/access/:id", async (req, res) => {
+    app.put("/lessons/access/:id", verifyJWT, async (req, res) => {
       const { id } = req.params;
       const { accessLevel } = req.body;
       try {
@@ -556,7 +557,7 @@ async function run() {
     });
 
     //...................... Update a lesson featured level by ID in db....................//
-    app.put("/lessons/featured/:id", async (req, res) => {
+    app.put("/lessons/featured/:id", verifyJWT, async (req, res) => {
       const { id } = req.params;
       const { featured } = req.body;
 
@@ -672,33 +673,37 @@ async function run() {
     });
 
     //.................... Get top active contributors with lesson count .................//
-    app.get("/lessons/analytics/top-contributors",verifyJWT, async (req, res) => {
-      try {
-        const contributors = await lessonCollection
-          .aggregate([
-            {
-              $group: {
-                _id: "$creator.email",
-                name: { $first: "$creator.name" },
-                totalLessons: { $sum: 1 },
+    app.get(
+      "/lessons/analytics/top-contributors",
+      verifyJWT,
+      async (req, res) => {
+        try {
+          const contributors = await lessonCollection
+            .aggregate([
+              {
+                $group: {
+                  _id: "$creator.email",
+                  name: { $first: "$creator.name" },
+                  totalLessons: { $sum: 1 },
+                },
               },
-            },
-            { $sort: { totalLessons: -1 } },
-            { $limit: 5 }, 
-          ])
-          .toArray();
+              { $sort: { totalLessons: -1 } },
+              { $limit: 5 },
+            ])
+            .toArray();
 
-        res.status(200).json({
-          success: true,
-          contributors,
-        });
-      } catch (error) {
-        res.status(500).json({
-          success: false,
-          message: "Failed to fetch active contributors",
-        });
+          res.status(200).json({
+            success: true,
+            contributors,
+          });
+        } catch (error) {
+          res.status(500).json({
+            success: false,
+            message: "Failed to fetch active contributors",
+          });
+        }
       }
-    });
+    );
 
     //...................... Remove a  favorite lesson by id from db......................//
     app.delete("/favorites/:id", async (req, res) => {
@@ -1076,10 +1081,10 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
   }
