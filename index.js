@@ -990,11 +990,33 @@ async function run() {
     //........................Get all users data from in db.............................//
     app.get("/user", async (req, res) => {
       try {
-        const users = await usersCollection.find().toArray();
+        const usersWithLessonCount = await usersCollection
+          .aggregate([
+            {
+              $lookup: {
+                from: "lessonCollection",
+                localField: "email",
+                foreignField: "creator.email",
+                as: "lessons",
+              },
+            },
+            {
+              $addFields: {
+                totalLessons: { $size: "$lessons" },
+              },
+            },
+            {
+              $project: {
+                lessons: 0,
+              },
+            },
+          ])
+          .toArray();
+
         res.status(200).json({
           success: true,
           message: "All users fetched successfully",
-          users: users,
+          users: usersWithLessonCount,
         });
       } catch (error) {
         res.status(500).json({
