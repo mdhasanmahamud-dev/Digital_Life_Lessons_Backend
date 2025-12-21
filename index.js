@@ -119,41 +119,60 @@ async function run() {
     });
 
     //........................Get All public lesson data from db........................//
-
     app.get("/lessons", async (req, res) => {
       try {
-        const { search, category, emotion, sort } = req.query;
+        const {
+          search = "",
+          category = "",
+          emotion = "",
+          sort = "",
+          page = 1,
+        } = req.query;
 
-        // Base filter: only public lessons
-        const filter = { privacy: "public" };
+        const limit = 6;
+        const pageNumber = parseInt(page);
 
-        // Category filter
-        if (category && category !== "All Categories")
-          filter.category = category;
+        // query build
+        const query = { privacy: "public" };
 
-        // Emotional Tone filter
-        if (emotion && emotion !== "All Emotions")
-          filter.emotionalTone = emotion;
+        if (search) {
+          query.title = { $regex: search, $options: "i" };
+        }
+        if (category) {
+          query.category = category;
+        }
+        if (emotion) {
+          query.emotionalTone = emotion;
+        }
 
-        // Search by title keyword
-        if (search) filter.title = { $regex: search, $options: "i" };
+        let cursor = lessonCollection.find(query);
 
-        // Query
-        let query = lessonCollection.find(filter);
+        if (sort === "newest") {
+          cursor = cursor.sort({ createdAt: -1 });
+        }
+        if (sort === "mostSaved") {
+          cursor = cursor.sort({ savedCount: -1 });
+        }
 
-        // Sort
-        if (sort === "newest") query = query.sort({ createdAt: -1 });
-        else if (sort === "mostSaved") query = query.sort({ saveCount: -1 });
+        // total count (IMPORTANT)
+        const totalLessons = await lessonCollection.countDocuments(query);
 
-        const lessons = await query.toArray();
+        const lessons = await cursor
+          .skip((pageNumber - 1) * limit)
+          .limit(limit)
+          .toArray();
 
-        res.status(200).json({ success: true, lessons });
+        res.json({
+          success: true,
+          lessons,
+          page: pageNumber,
+          totalLessons,
+          totalPages: Math.ceil(totalLessons / limit),
+        });
       } catch (error) {
-        console.error(error);
         res.status(500).json({
           success: false,
-          message: "Failed to fetch lessons",
-          error: error.message,
+          message: error.message,
         });
       }
     });
