@@ -24,3 +24,4 @@ digital-life-lessons.json
 *.njsproj
 *.sln
 *.sw?
+.vercel

@@ -6,8 +6,11 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KYE);
 const admin = require("firebase-admin");
 const port = process.env.PORT || 5000;
 
-const serviceAccount = require("./digital-life-lessons.json");
-
+// const serviceAccount = require("./digital-life-lessons.json");
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
+  "utf8"
+);
+const serviceAccount = JSON.parse(decoded);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
@@ -16,7 +19,13 @@ const app = express();
 // middleware
 app.use(
   cors({
-    origin: [process.env.CLIENT_DOMAIN],
+    origin: [
+      process.env.CLIENT_DOMAIN,
+      "https://digital-life-lessons-638c6.web.app",
+      "http://localhost:5173",
+      "http://localhost:5174",
+    ],
+
     credentials: true,
     optionSuccessStatus: 200,
   })
@@ -26,12 +35,10 @@ app.use(express.json());
 // jwt middlewares
 const verifyJWT = async (req, res, next) => {
   const token = req?.headers?.authorization?.split(" ")[1];
-  console.log(token);
   if (!token) return res.status(401).send({ message: "Unauthorized Access!" });
   try {
     const decoded = await admin.auth().verifyIdToken(token);
     req.tokenEmail = decoded.email;
-    console.log(decoded);
     next();
   } catch (err) {
     console.log(err);
@@ -120,6 +127,45 @@ async function run() {
           success: false,
           message: "Failed to retrieve lessons data",
           error: error.message,
+        });
+      }
+    });
+
+    //.............................Get most saved lessons from db.........................//
+    app.get("/lessons/most-saved", async (req, res) => {
+      try {
+        const result = await favoriteCollection
+          .aggregate([
+            {
+              $group: {
+                _id: "$lessonId",
+                totalSaved: { $sum: 1 },
+              },
+            },
+            { $sort: { totalSaved: -1 } },
+            { $limit: 6 },
+            {
+              $lookup: {
+                from: "lessonCollection",
+                localField: "_id",
+                foreignField: "_id",
+                as: "lesson",
+              },
+            },
+            { $unwind: "$lesson" },
+            {
+              $match: {
+                "lesson.privacy": "public",
+              },
+            },
+          ])
+          .toArray();
+
+        res.send({ success: true, lessons: result });
+      } catch (error) {
+        res.status(500).send({
+          success: false,
+          message: "Could not load most saved lessons",
         });
       }
     });
@@ -406,7 +452,10 @@ async function run() {
     });
 
     //...................... Count active contributors from db ...........................//
-    app.get("/lessons/analytics/active-contributors",verifyJWT,async (req, res) => {
+    app.get(
+      "/lessons/analytics/active-contributors",
+      verifyJWT,
+      async (req, res) => {
         try {
           const contributors = await lessonCollection
             .aggregate([
