@@ -93,39 +93,66 @@ async function run() {
     });
 
     //........................Get All lesson data from db...............................//
-    app.get("/all-lessons", verifyJWT, async (req, res) => {
+    app.get("/all-lessons", async (req, res) => {
       try {
-        const lessons = await lessonCollection.find().toArray();
+        const { category, privacy } = req.query;
+        const filter = {};
+
+        if (category) filter.category = category;
+        if (privacy) filter.privacy = privacy;
+        console.log(filter);
+        const lessons = await lessonCollection
+          .find(filter)
+          .sort({ createdAt: -1 })
+          .toArray();
+
         res.status(200).json({
           success: true,
-          message: "Lessons data retrieved successfully",
           lessons,
         });
       } catch (error) {
-        console.error("Error retrieving lessons data:", error);
         res.status(500).json({
           success: false,
-          message: "Failed to retrieve lessons data",
-          error: error.message,
+          message: "Failed to retrieve lessons",
         });
       }
     });
 
     //........................Get All public lesson data from db........................//
+
     app.get("/lessons", async (req, res) => {
       try {
-        const query = { privacy: "public" };
-        const lessons = await lessonCollection.find(query).toArray();
-        res.status(200).json({
-          success: true,
-          message: "Lessons data retrieved successfully",
-          lessons,
-        });
+        const { search, category, emotion, sort } = req.query;
+
+        // Base filter: only public lessons
+        const filter = { privacy: "public" };
+
+        // Category filter
+        if (category && category !== "All Categories")
+          filter.category = category;
+
+        // Emotional Tone filter
+        if (emotion && emotion !== "All Emotions")
+          filter.emotionalTone = emotion;
+
+        // Search by title keyword
+        if (search) filter.title = { $regex: search, $options: "i" };
+
+        // Query
+        let query = lessonCollection.find(filter);
+
+        // Sort
+        if (sort === "newest") query = query.sort({ createdAt: -1 });
+        else if (sort === "mostSaved") query = query.sort({ saveCount: -1 });
+
+        const lessons = await query.toArray();
+
+        res.status(200).json({ success: true, lessons });
       } catch (error) {
-        console.error("Error retrieving lessons data:", error);
+        console.error(error);
         res.status(500).json({
           success: false,
-          message: "Failed to retrieve lessons data",
+          message: "Failed to fetch lessons",
           error: error.message,
         });
       }
