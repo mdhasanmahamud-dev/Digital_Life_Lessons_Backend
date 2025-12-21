@@ -170,6 +170,50 @@ async function run() {
       }
     });
 
+    // Get top contributors of the week
+    app.get("/lessons/analytics/top-contributors-week", async (req, res) => {
+      try {
+        const startOfWeek = new Date();
+        startOfWeek.setHours(0, 0, 0, 0);
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // Sunday
+
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(endOfWeek.getDate() + 6);
+
+        const contributors = await lessonCollection
+          .aggregate([
+            {
+              $match: {
+                createdAt: { $gte: startOfWeek, $lte: endOfWeek },
+              },
+            },
+            {
+              $group: {
+                _id: "$creator.email",
+                name: { $first: "$creator.name" },
+                photo: { $first: "$creator.photoURL" },
+                totalLessons: { $sum: 1 },
+              },
+            },
+            { $sort: { totalLessons: -1 } },
+            { $limit: 5 },
+          ])
+          .toArray();
+
+        res.status(200).json({
+          success: true,
+          contributors,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch weekly top contributors",
+          error: error.message,
+        });
+      }
+    });
+
     //........................Get all lessons by email from db..........................//
     app.get("/lessons/user/:email", async (req, res) => {
       const { email } = req.params;
