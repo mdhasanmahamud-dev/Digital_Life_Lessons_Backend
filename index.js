@@ -545,10 +545,7 @@ async function run() {
     });
 
     //...................... Count active contributors from db ...........................//
-    app.get(
-      "/lessons/analytics/active-contributors",
-      verifyJWT,
-      async (req, res) => {
+    app.get("/lessons/analytics/active-contributors",verifyJWT,async (req, res) => {
         try {
           const contributors = await lessonCollection
             .aggregate([
@@ -581,7 +578,7 @@ async function run() {
         }
       }
     );
-    
+
     //..............................analytics for graph...................................//
     app.get("/admin/analytics/growth", async (req, res) => {
       try {
