@@ -72,11 +72,14 @@ async function run() {
       try {
         const lesson = {
           ...lessonData,
+          like: 0,
           isFeatured: false,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
+        console.log(lesson);
         const result = await lessonCollection.insertOne(lesson);
+        console.log(result);
         res.status(200).json({
           success: true,
           message: "Lesson data inserted successfully",
@@ -578,6 +581,21 @@ async function run() {
         }
       }
     );
+    
+    //..............................analytics for graph...................................//
+    app.get("/admin/analytics/growth", async (req, res) => {
+      try {
+        const userCount = await usersCollection.countDocuments();
+        const lessonCount = await lessonCollection.countDocuments();
+
+        res.send([
+          { name: "Users", value: userCount },
+          { name: "Lessons", value: lessonCount },
+        ]);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to load analytics" });
+      }
+    });
 
     //...................... DELETE a lesson by ID from db.................................//
     app.delete("/lessons/:id", async (req, res) => {
@@ -636,6 +654,37 @@ async function run() {
         res.status(500).json({
           success: false,
           message: "Failed to update lesson",
+          error: error.message,
+        });
+      }
+    });
+
+    //........................ Update a like by ID in db..................................//
+    app.patch("/lessons/like/:id", async (req, res) => {
+      const { id } = req.params;
+      try {
+        const query = { _id: new ObjectId(id) };
+        const result = await lessonCollection.updateOne(query, {
+          $inc: { like: 1 },
+        });
+
+        if (result.matchedCount === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Lesson not found",
+          });
+        }
+
+        res.status(200).json({
+          success: true,
+          message: "Like updated successfully",
+          modifiedCount: result.modifiedCount,
+        });
+      } catch (error) {
+        console.error("Error updating like:", error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to update like",
           error: error.message,
         });
       }
@@ -1014,7 +1063,6 @@ async function run() {
       }
     });
 
-    
     //___________________________________________________USERS RELATED APIS HERE_____________________________________________________________//
     //........................Save a user data in db....................................//
     app.post("/user", async (req, res) => {
