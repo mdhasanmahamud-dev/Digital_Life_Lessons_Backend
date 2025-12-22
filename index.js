@@ -545,7 +545,10 @@ async function run() {
     });
 
     //...................... Count active contributors from db ...........................//
-    app.get("/lessons/analytics/active-contributors",verifyJWT,async (req, res) => {
+    app.get(
+      "/lessons/analytics/active-contributors",
+      verifyJWT,
+      async (req, res) => {
         try {
           const contributors = await lessonCollection
             .aggregate([
@@ -672,10 +675,13 @@ async function run() {
           });
         }
 
+        const updatedLesson = await lessonCollection.findOne(query);
+
         res.status(200).json({
           success: true,
           message: "Like updated successfully",
           modifiedCount: result.modifiedCount,
+          like: updatedLesson.like,
         });
       } catch (error) {
         console.error("Error updating like:", error);
