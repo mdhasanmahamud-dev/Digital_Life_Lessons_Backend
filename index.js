@@ -990,7 +990,7 @@ async function run() {
       }
     });
 
-    //..............................et reports by lessonI................................//
+    //..............................get reports by lessonI................................//
     app.get("/reportes/lesson/:lessonId", async (req, res) => {
       try {
         const { lessonId } = req.params;
@@ -1014,6 +1014,7 @@ async function run() {
       }
     });
 
+    
     //___________________________________________________USERS RELATED APIS HERE_____________________________________________________________//
     //........................Save a user data in db....................................//
     app.post("/user", async (req, res) => {
