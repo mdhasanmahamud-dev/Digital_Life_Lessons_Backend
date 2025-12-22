@@ -990,6 +990,30 @@ async function run() {
       }
     });
 
+    //..............................et reports by lessonI................................//
+    app.get("/reportes/lesson/:lessonId", async (req, res) => {
+      try {
+        const { lessonId } = req.params;
+
+        const reports = await lessonsReportsCollection
+          .find({ lessonId })
+          .sort({ timestamp: -1 })
+          .toArray();
+
+        res.status(200).json({
+          success: true,
+          reports,
+          totalReports: reports.length,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({
+          success: false,
+          message: "Failed to fetch lesson reports",
+        });
+      }
+    });
+
     //___________________________________________________USERS RELATED APIS HERE_____________________________________________________________//
     //........................Save a user data in db....................................//
     app.post("/user", async (req, res) => {
