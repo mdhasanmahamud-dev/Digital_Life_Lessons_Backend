@@ -66,7 +66,7 @@ async function run() {
 
     //_________________________________________________LESSONS RELATED APIS HERE___________________________________________________________//
 
-    //........................Save a lesson data in db.................................//
+    //........................Save a lesson data in database.................................//
     app.post("/lessons", async (req, res) => {
       const lessonData = req.body;
       try {
